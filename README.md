@@ -20,7 +20,7 @@ Older shell scripts fail with `Couldn't log in` on newer Huawei firmware because
 1. **Clone this repository:**
    ```bash
    git clone https://github.com/Codeforge-mame/huawei-lte-force-4g
-   cd huawei-4g-cli
+   cd huawei-lte-force-4g
    ```
 
 2. **Install the required library:**
@@ -65,7 +65,9 @@ Older shell scripts fail with `Couldn't log in` on newer Huawei firmware because
 # Reboot the router
 ./huawei_cli.py reboot
 ```
-
+## Test status
+ - this method tested on Huawei 4g pocket router and it worked. and if you get any error or this script doesn't work inbox here.
+   
 ## Troubleshooting
 - **`100003: No rights (needs login)` or Login Errors:** Huawei Mobile Wi-Fi routers usually allow only **one active admin session** at a time. Make sure you are logged out of the web dashboard (`http://192.168.8.1`) in your browser before running commands.
 - **Connection Timeout:** Verify that you are connected to your router's Wi-Fi or USB network and that `ROUTER_IP` matches your gateway IP.
