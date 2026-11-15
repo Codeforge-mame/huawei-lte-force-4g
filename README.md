@@ -19,7 +19,7 @@ Older shell scripts fail with `Couldn't log in` on newer Huawei firmware because
 
 1. **Clone this repository:**
    ```bash
-   git clone https://github.com
+   git clone https://github.com/Codeforge-mame/huawei-lte-force-4g
    cd huawei-4g-cli
    ```
 
