@@ -6,7 +6,21 @@ from huawei_lte_api.Connection import Connection
 from huawei_lte_api.enums.net import NetworkModeEnum
 from huawei_lte_api.enums.sms import BoxTypeEnum
 
-# Load credentials from local .env or ~/.huawei_router_env
+# Common LTE Band Bitmasks (Hexadecimal)
+LTE_BANDS = {
+    "all": "7FFFFFFFFFFFFFFF",
+    "b1": "1",             # 2100 MHz
+    "b3": "4",             # 1800 MHz
+    "b5": "10",            # 850 MHz
+    "b7": "40",            # 2600 MHz
+    "b8": "80",            # 900 MHz
+    "b20": "80000",        # 800 MHz
+    "b28": "8000000",      # 700 MHz
+    "b38": "2000000000",   # 2600 MHz TDD
+    "b40": "8000000000",   # 2300 MHz TDD
+    "b41": "10000000000",  # 2500 MHz TDD
+}
+
 def load_config():
     config = {
         "ROUTER_IP": "192.168.8.1",
@@ -28,15 +42,21 @@ def print_help():
 
 Usage: ./huawei_cli.py <command> [arguments]
 
-Commands:
-  4g                  Force 4G/LTE only mode
-  3g                  Force 3G only mode
-  auto                Set network mode to Auto (4G/3G/2G)
-  status              Show signal strength (RSRP/SINR), battery, and network type
-  stats               Show current session & monthly data usage
-  sms                 Read recent inbox SMS messages
-  send <num> <msg>    Send an SMS message
-  reboot              Reboot the router
+Network & Band Commands:
+  4g                    Force 4G/LTE only mode
+  3g                    Force 3G only mode
+  auto                  Set network mode to Auto (4G/3G/2G)
+  band <preset|hex>     Lock LTE frequency band (all, b1, b3, b7, b8, b20, b28, b38, b40, b41)
+  data <on|off>         Enable or disable mobile data connection
+  wifi <2.4g|5g>        Switch Wi-Fi frequency band (2.4GHz or 5GHz)
+
+Monitoring & Device Commands:
+  status                Show signal strength (RSRP/SINR), battery, and network type
+  stats                 Show current session & monthly data usage
+  devices               List connected Wi-Fi devices (Name, IP, MAC)
+  sms                   Read recent inbox SMS messages
+  send <num> <msg>      Send an SMS message
+  reboot                Reboot the router
 """)
 
 def format_bytes(size):
@@ -74,13 +94,57 @@ def main():
                 client.net.set_net_mode(current["LTEBand"], current["NetworkBand"], modes[cmd])
                 print(f"Success: Network mode set to {cmd.upper()}")
 
+            elif cmd == "band":
+                if len(sys.argv) < 3:
+                    print("Usage: ./huawei_cli.py band <all|b1|b3|b7|b8|b20|b28|b38|b40|b41|hex>")
+                    sys.exit(1)
+                preset = sys.argv[2].lower()
+                lte_hex = LTE_BANDS.get(preset, preset)
+                current = client.net.net_mode()
+                client.net.set_net_mode(lte_hex, current["NetworkBand"], current["NetworkMode"])
+                print(f"Success: LTE band set to {preset.upper()} (0x{lte_hex})")
+
+            elif cmd == "data":
+                if len(sys.argv) < 3 or sys.argv[2].lower() not in ("on", "off"):
+                    print("Usage: ./huawei_cli.py data <on|off>")
+                    sys.exit(1)
+                state = 1 if sys.argv[2].lower() == "on" else 0
+                client.dial_up.set_mobile_dataswitch(state)
+                print(f"Success: Mobile data turned {'ON' if state == 1 else 'OFF'}")
+
+            elif cmd == "wifi":
+                if len(sys.argv) < 3 or sys.argv[2].lower() not in ("2.4g", "5g"):
+                    print("Usage: ./huawei_cli.py wifi <2.4g|5g>")
+                    sys.exit(1)
+                choice = sys.argv[2].lower()
+                freq_val = "1" if choice == "5g" else "0"
+                # Fetch current basic settings to preserve SSID/security while updating frequency
+                basic = client.wlan.basic_settings()
+                if isinstance(basic, list):
+                    basic = basic[0]
+                basic["WifiFrequency"] = freq_val
+                client.wlan.set_basic_settings(basic)
+                print(f"Success: Wi-Fi frequency switched to {choice.upper()} (Wi-Fi may reconnect briefly)")
+
+            elif cmd == "devices":
+                hosts = client.wlan.host_list()
+                host_list = hosts.get("Hosts", {}).get("Host", [])
+                if isinstance(host_list, dict):
+                    host_list = [host_list]
+                if not host_list:
+                    print("No connected devices found.")
+                for h in host_list:
+                    print(f"- {h.get('HostName', 'Unknown')} | IP: {h.get('IpAddress')} | MAC: {h.get('MacAddress')}")
+
             elif cmd == "status":
                 status = client.monitoring.status()
                 signal = client.device.signal()
+                freq = "5GHz" if str(status.get("wififrequence")) == "1" else "2.4GHz"
                 print(f"Network Type : {status.get('CurrentNetworkType')} (19 = 4G/LTE)")
                 print(f"Signal Bars  : {status.get('SignalIcon')}/{status.get('maxsignal')}")
                 print(f"RSRP / RSRQ  : {signal.get('rsrp')} / {signal.get('rsrq')}")
                 print(f"SINR / RSSI  : {signal.get('sinr')} / {signal.get('rssi')}")
+                print(f"Wi-Fi Band   : {freq}")
                 print(f"Battery      : {status.get('BatteryPercent')}%")
                 print(f"Connected    : {status.get('CurrentWifiUser')} device(s)")
 
@@ -121,7 +185,7 @@ def main():
 
     except Exception as e:
         print(f"Error: {e}")
-        print("Tip: Close any open router web dashboard tabs (192.168.8.1) and try again.")
+        print("Tip: Close any open router web dashboard tabs (192.168.8.1) or check if your hardware supports this setting.")
 
 if __name__ == "__main__":
     main()
