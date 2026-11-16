@@ -12,6 +12,7 @@ Older shell scripts fail with `Couldn't log in` on newer Huawei firmware because
 - **Data Usage Stats:** Check current session and monthly download/upload totals.
 - **SMS Management:** Read inbox messages and send SMS directly from the terminal.
 - **Remote Reboot:** Restart your router with a single command.
+- **Power Management:** Reboot or power off the router remotely (`reboot` / `poweroff`).
 
 ## Requirements
 - Python 3.8+
@@ -85,6 +86,10 @@ Older shell scripts fail with `Couldn't log in` on newer Huawei firmware because
 
 # Reboot the router
 ./huawei_cli.py reboot
+
+# Power off the router (requires pressing the physical power button to turn back on)
+./huawei_cli.py poweroff
+
 ```
 
 ## Test Status
